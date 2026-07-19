@@ -1,0 +1,88 @@
+name: DevSecOps Pipeline - Proyecto2 (UPAEP)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  CYCLONEDX_NPM_VERSION: '^2.0.0||^3.0.0||^4.0.0'
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/juice-shop-upaep
+
+jobs:
+  security-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      # ---- SCA: Analisis de Composicion de Software ----
+      - name: SCA - npm audit
+        run: npm audit --json > npm-audit-report.json || true
+
+      - name: Subir reporte SCA
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-npm-audit-report
+          path: npm-audit-report.json
+
+      # ---- SBOM del codigo fuente (dependencias npm) ----
+      - name: Instalar cyclonedx-npm
+        run: npm install -g @cyclonedx/cyclonedx-npm@"$CYCLONEDX_NPM_VERSION"
+
+      - name: Generar SBOM (CycloneDX)
+        run: npm run sbom
+
+      - name: Subir SBOM (codigo fuente)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx-source
+          path: bom.json
+
+      # ---- Contenedores: build y push a GitHub Container Registry ----
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build y push de imagen Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ---- SBOM de la imagen ya construida ----
+      - name: Generar SBOM de la imagen Docker
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}:latest
+          format: spdx-json
+          output-file: sbom-image.spdx.json
+
+      - name: Subir SBOM (imagen Docker)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-imagen-docker
+          path: sbom-image.spdx.json
