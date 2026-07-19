@@ -11,7 +11,6 @@ permissions:
 
 env:
   CYCLONEDX_NPM_VERSION: '^2.0.0||^3.0.0||^4.0.0'
-  IMAGE_NAME: ghcr.io/${{ toLower(github.repository_owner) }}/juice-shop-upaep
 
 jobs:
   security-and-build:
@@ -19,6 +18,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Preparar nombre de imagen (minusculas)
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/juice-shop-upaep" >> "$GITHUB_ENV"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
