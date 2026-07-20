@@ -23,6 +23,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Despertar la instancia (cold start de Render free tier)
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.DEPLOY_URL }}" || echo "000")
+            echo "Intento $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Instancia lista para escanear."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "La instancia no respondio a tiempo, se intenta escanear de todas formas."
+
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
         with:
