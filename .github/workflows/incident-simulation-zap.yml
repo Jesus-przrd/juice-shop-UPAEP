@@ -30,6 +30,7 @@ jobs:
           target: ${{ vars.DEPLOY_URL }}
           cmd_options: '-a -j'
           fail_action: false
+          allow_issue_writing: false
 
       - name: Subir reporte de ZAP
         if: always()
