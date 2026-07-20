@@ -2,7 +2,7 @@ name: DevSecOps Pipeline - Proyecto2 (UPAEP)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, dev, test ]
   workflow_dispatch:
 
 permissions:
@@ -71,14 +71,14 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       # ---- SBOM de la imagen ya construida ----
       - name: Generar SBOM de la imagen Docker
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.IMAGE_NAME }}:latest
+          image: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: spdx-json
           output-file: sbom-image.spdx.json
 
